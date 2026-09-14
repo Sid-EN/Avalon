@@ -95,10 +95,13 @@ git push -u origin main
 
 用 `git config --local --list` 可以查看；hook 不會被 push 到 GitHub，只在這台電腦生效。
 
-### 3. 開啟 Pages
+### 3. 開啟 Pages（由 GitHub Actions 自動測試後部署）
 1. 在 GitHub 儲存庫頁面點「**Settings**」→ 左側「**Pages**」。
-2. Source 選「**Deploy from a branch**」，Branch 選「**main**」、資料夾選「**/ (root)**」→「**Save**」。
-3. 等 1～2 分鐘，網址會是：`https://你的帳號.github.io/avalon/`
+2. Source 選「**GitHub Actions**」。
+3. push 到 main 之後，到「**Actions**」分頁可以看到自動測試的進度（約 10 分鐘）。**全部測試通過才會部署**。
+4. 部署完成後，網址會是：`https://sid-en.github.io/Avalon/`
+
+> 測試與 CI/CD 的詳細說明見 [TESTING.md](TESTING.md)。
 
 ### 4. 把網址加入 Firebase 授權網域
 1. 回到 Firebase →「**Authentication**」→「**設定（Settings）**」分頁 →「**授權網域（Authorized domains）**」。
@@ -134,6 +137,12 @@ Firebase 免費方案（Spark）的限制，對朋友局來說非常充裕：
 **Q：房主斷線了，遊戲會卡住嗎？**
 房主的瀏覽器負責推進遊戲。房主離線超過 30 秒，系統會自動把房主交給下一位在線的玩家，遊戲可以繼續。
 
+**Q：有玩家中途離開，遊戲卡住了怎麼辦？**
+倒數時間到只會提醒，不會自動替玩家做決定。如果等待中的玩家**離線**了，房主可以打開「房主」選單的「卡關處理」代為處理（例如把離線玩家的票算反對、換下一位隊長），每次處理都會記錄在遊戲日誌裡。
+
+**Q：遊戲中想暫時離開？**
+按上方「回首頁」，座位會保留。之後在首頁輸入同一個房間代碼就能回到遊戲。
+
 **Q：真的沒辦法作弊嗎？**
 一般玩家就算打開瀏覽器的開發者工具，也看不到別人的身分、選票和任務牌，好人也無法出失敗牌。
 唯一的例外是**房主**：因為沒有付費伺服器，身分由房主的瀏覽器分配，懂技術的房主理論上看得到全部身分。朋友局可以輪流當房主，或由大家信任的人開房。
@@ -148,15 +157,4 @@ Firebase 免費方案（Spark）的限制，對朋友局來說非常充裕：
 
 ## 五、本機測試（維護程式時使用）
 
-```bash
-# 產生安全規則（改了 tools/build-rules.mjs 之後）
-node tools/build-rules.mjs
-
-# 規則邏輯單元測試
-node --test tests/game.test.mjs
-
-# 用 Firebase 模擬器在本機玩（需要 Java 與 firebase-tools）
-npx firebase-tools emulators:start --only auth,database --project demo-avalon
-python3 -m http.server 8080
-# 瀏覽器打開 http://127.0.0.1:8080/?emu=1（可以開多個無痕視窗模擬多位玩家）
-```
+見 [TESTING.md](TESTING.md)：單元測試、功能測試、安全規則測試、系統測試，以及用模擬器在自己電腦上試玩的方法。

@@ -395,6 +395,18 @@ select.input, .timer-field select { appearance: auto; }
 .toast.ok { border-color: var(--ok); }
 .toast.turn { border-color: var(--gold); background: linear-gradient(180deg, #5a4318, #2e2310); font-weight: 800; font-size: 1.05rem; }
 
+/* ── 檢查後補強 ── */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.conn-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 70; margin: 0; box-shadow: var(--shadow); }
+.icon-btn { width: 40px; height: 40px; }
+.modal { max-height: calc(100dvh - 32px); }
+.modal:focus { outline: none; }
+@media (min-width: 901px) { .board-right { padding-bottom: 80px; } }
+.host-chip { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.notice.host-away { border-radius: 0; max-width: none; margin: 0; background: rgba(232, 176, 74, .16); border-width: 0 0 1px; }
+.notice.stuck { border-radius: 0; max-width: none; margin: 0; border-width: 1px 0 0; }
+.flip-card:disabled { cursor: progress; }
+
 /* ── 說明書（新手教學） ── */
 .guide-fab {
   position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 40;

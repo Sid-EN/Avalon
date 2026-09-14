@@ -4,8 +4,8 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getDatabase, ref, get, set, update, remove, push, onValue, off,
-  onDisconnect, serverTimestamp, runTransaction, query, orderByValue, endAt, limitToFirst, limitToLast,
+  getDatabase, ref, get, set, update, remove, push, onValue,
+  onDisconnect, serverTimestamp, query, orderByValue, endAt, limitToFirst, limitToLast,
   connectDatabaseEmulator,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js';
 import { firebaseConfig } from './firebase-config.js';
@@ -42,6 +42,6 @@ export function signIn() {
 }
 
 export {
-  db, ref, get, set, update, remove, push, onValue, off,
-  onDisconnect, serverTimestamp, runTransaction, query, orderByValue, endAt, limitToFirst, limitToLast,
+  db, ref, get, set, update, remove, push, onValue,
+  onDisconnect, serverTimestamp, query, orderByValue, endAt, limitToFirst, limitToLast,
 };

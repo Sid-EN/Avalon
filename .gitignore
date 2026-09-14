@@ -1,4 +1,7 @@
 node_modules/
-*.log
-.firebase/
+_site/
+playwright-report/
 test-results/
+blob-report/
+.firebase/
+*.log

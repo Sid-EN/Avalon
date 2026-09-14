@@ -6,6 +6,7 @@ import * as G from '../game.js';
 import { TEAM_COUNTS, QUEST_SIZES, failsRequired } from '../rules.js';
 import { roleSvg } from '../art.js';
 import { Art, Avatar, ConfirmModal, Modal, toast, errMsg, copyText } from './common.js';
+import { HistoryTable, LogList } from './panels.js';
 import { openGuide } from './guide.js';
 
 const ROLE_OPTIONS = [
@@ -22,27 +23,21 @@ const TIMER_FIELDS = [
 ];
 const fmtSec = (s) => (s === 0 ? '不限時' : s < 60 ? `${s} 秒` : s % 60 ? `${Math.floor(s / 60)} 分 ${s % 60} 秒` : `${s / 60} 分鐘`);
 
-export function mergedSettings(raw) {
-  return {
-    ...G.DEFAULT_SETTINGS, ...(raw || {}),
-    roles: { ...G.DEFAULT_SETTINGS.roles, ...(raw?.roles || {}) },
-    timers: { ...G.DEFAULT_SETTINGS.timers, ...(raw?.timers || {}) },
-  };
-}
-
 export function Lobby({ s, code, uid, onLeave }) {
   const isHost = s.meta?.hostUid === uid;
   const order = Room.seatingOrder(s);
   const n = order.length;
-  const settings = mergedSettings(s.settings);
+  const settings = G.mergeSettings(s.settings);
   const { errors, warnings } = G.validateSetup(n, settings);
   const counts = TEAM_COUNTS[n];
   const { good, evil } = G.selectedSpecials(settings.roles);
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState(null);
+  const [showLast, setShowLast] = useState(false);
   const name = (u) => Room.nameOf(s, u);
-  const online = (u) => !!s.presence?.[u]?.online;
+  const online = (u) => Room.isOnline(s, u);
+  const hasLastGame = !!s.hist && !!s.pub?.order;
 
   const act = (p) => p.catch((e) => toast(errMsg(e), 'error'));
   const setSetting = (path, value) => { if (isHost) act(Room.updateSettings(code, { [path]: value })); };
@@ -84,6 +79,7 @@ export function Lobby({ s, code, uid, onLeave }) {
           <button type="button" class="btn btn-ghost btn-small" onClick=${() => copyText(link)}>複製邀請連結</button>
         </div>
         <p class="muted small">把代碼或連結貼到 Discord／LINE，朋友開啟網頁輸入代碼就能加入。</p>
+        ${hasLastGame && html`<button type="button" class="btn btn-ghost btn-small center-block" onClick=${() => setShowLast(true)} data-testid="last-game">查看上一局紀錄</button>`}
       </section>
 
       <section class="card">
@@ -166,15 +162,24 @@ export function Lobby({ s, code, uid, onLeave }) {
         : html`<p class="waiting">等待房主 ${name(s.meta?.hostUid)} 開始遊戲…</p>`}
     </footer>
 
+    ${showLast && html`<${Modal} title="上一局紀錄" wide onClose=${() => setShowLast(false)}>
+      <h4>投票與任務紀錄</h4><${HistoryTable} s=${s} />
+      <h4>遊戲日誌</h4><${LogList} s=${s} />
+    <//>`}
     ${renaming !== null && html`<${RenameModal} initial=${renaming} onCancel=${() => setRenaming(null)}
-      onSave=${async (v) => { await act(Room.renamePlayer(code, uid, v)); setRenaming(null); }} />`}
+      onSave=${async (v) => {
+        try {
+          const finalName = await Room.renameSelf(code, uid, v);
+          if (finalName !== v) toast(`暱稱「${v}」已有人使用，改為「${finalName}」`, 'warn');
+        } catch (e) { toast(errMsg(e), 'error'); }
+        setRenaming(null);
+      }} />`}
     ${confirm?.kind === 'kick' && html`<${ConfirmModal} title="移出玩家" danger confirmText="移出"
       message=${`確定要把 ${name(confirm.target)} 移出房間嗎？對方將無法再加入這個房間。`}
       onCancel=${() => setConfirm(null)} onConfirm=${async () => { await act(Room.kickPlayer(code, confirm.target)); setConfirm(null); }} />`}
     ${confirm?.kind === 'host' && html`<${ConfirmModal} title="轉移房主"
       message=${`確定要把房主交給 ${name(confirm.target)} 嗎？`}
-      onCancel=${() => setConfirm(null)} onConfirm=${async () => { await act(Room.transferHost(code, confirm.target)); setConfirm(null); }} />`}
-    ${confirm?.kind === 'start' && html`<${ConfirmModal} title="有玩家離線"
+      onCancel=${() => setConfirm(null)} onConfirm=${async () => { await act(Room.transferHost(code, confirm.target)); setConfirm(null); }} />`}    ${confirm?.kind === 'start' && html`<${ConfirmModal} title="有玩家離線"
       message=${`${confirm.off.map(name).join('、')} 目前離線。遊戲開始後需要每個人操作，確定要開始嗎？`}
       onCancel=${() => setConfirm(null)} onConfirm=${async () => { setConfirm(null); await start(); }} />`}
     ${confirm?.kind === 'leave' && html`<${ConfirmModal} title="離開房間" danger confirmText="離開"

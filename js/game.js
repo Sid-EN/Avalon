@@ -15,6 +15,15 @@ export const DEFAULT_SETTINGS = {
 
 export const teamOf = (role) => ROLES[role]?.team;
 
+// 補齊房間設定的預設值（舊房間或部分欄位缺少時）
+export function mergeSettings(raw) {
+  return {
+    ...DEFAULT_SETTINGS, ...(raw || {}),
+    roles: { ...DEFAULT_SETTINGS.roles, ...(raw?.roles || {}) },
+    timers: { ...DEFAULT_SETTINGS.timers, ...(raw?.timers || {}) },
+  };
+}
+
 // 用 crypto 產生公平的亂數（避免 Math.random 可被預測）
 export function randomInt(n) {
   const buf = new Uint32Array(1);

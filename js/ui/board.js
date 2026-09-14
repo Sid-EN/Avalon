@@ -1,7 +1,7 @@
 // 遊戲畫面：圓桌、任務軌、行動面板、結果視窗
 import { html, useState, useEffect } from '../vendor/preact-htm.js';
 import * as Room from '../room.js';
-import { skipNight, backToLobby, END_REASONS } from '../host.js';
+import { skipNight, backToLobby, END_REASONS, stuckInfo, resolveStuck, findAssassin } from '../host.js';
 import * as G from '../game.js';
 import { ROLES, QUEST_SIZES, failsRequired, MAX_REJECTIONS } from '../rules.js';
 import { roleSvg, roleBadgeSvg, cardBackSvg, TOKENS } from '../art.js';
@@ -13,7 +13,7 @@ const PHASE_TITLE = {
   night: '確認身分', team: '隊長組隊', vote: '全員投票', quest: '執行任務',
   lady: '湖中女神', assassin: '刺殺梅林', end: '遊戲結束',
 };
-const TIMER_KEY = { team: 'team', vote: 'vote', quest: 'quest', lady: 'lady', assassin: 'assassin' };
+const TIMED_PHASES = ['team', 'vote', 'quest', 'lady', 'assassin'];
 
 export function Board(props) {
   if (!props.s.pub) return html`<div class="center-msg">載入遊戲中…</div>`;
@@ -33,6 +33,7 @@ function BoardInner({ s, code, uid, onLeave }) {
   const [seen, setSeen] = useState(() => new Set(store.get(`avalon.seen.${code}`, [])));
 
   const name = (u) => Room.nameOf(s, u);
+  const online = (u) => Room.isOnline(s, u);
   const bySeat = (uids) => [...uids].sort((a, b) => p.seat[a] - p.seat[b]);
   const run = async (fn) => {
     try { await fn(); } catch (e) { toast(errMsg(e), 'error'); }
@@ -43,6 +44,10 @@ function BoardInner({ s, code, uid, onLeave }) {
     setSeen(next);
     store.set(`avalon.seen.${code}`, [...next].slice(-80));
   };
+
+  // 階段改變時關掉舊的確認視窗，避免按到意思已經改變的按鈕
+  useEffect(() => { setConfirm(null); }, [phase, p.round, p.attempt]);
+  useEffect(() => { if (panel === 'host' && !isHost) setPanel(null); }, [isHost]);
 
   const team = Object.keys(p.team || {});
   const draft = s.draft && s.draft.round === p.round && s.draft.attempt === p.attempt ? s.draft : null;
@@ -64,16 +69,21 @@ function BoardInner({ s, code, uid, onLeave }) {
   else if (phase === 'lady') pending = [p.lady?.holder];
   const myTurn = phase === 'assassin' ? assassinTurn && !s.assassinPick : pending.includes(uid);
 
-  const limit = TIMER_KEY[phase] ? (p.settings?.timers?.[TIMER_KEY[phase]] || 0) : 0;
+  const limit = TIMED_PHASES.includes(phase) ? (p.settings?.timers?.[phase] || 0) : 0;
   const remaining = limit && p.phaseAt ? p.phaseAt + limit * 1000 - now : null;
   const timeUp = remaining !== null && remaining <= 0;
+  const hostUid = s.meta?.hostUid;
+  const hostAway = phase !== 'end' && hostUid && s.loaded?.presence && !online(hostUid);
 
-  // 輪到自己時提醒
+  // 輪到自己時提醒；手機上自動捲到行動面板
   const turnKey = myTurn && phase !== 'night' ? `${phase}:${p.round}:${p.attempt}` : null;
   useEffect(() => {
     if (!turnKey) return;
     toast('輪到你了！', 'turn');
     try { navigator.vibrate?.(120); } catch { /* 不支援震動 */ }
+    if (matchMedia('(max-width: 900px)').matches) {
+      document.querySelector('[data-testid="action-panel"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, [turnKey]);
   const timeUpKey = timeUp && myTurn ? `${phase}:${p.phaseAt}` : null;
   useEffect(() => {
@@ -120,7 +130,7 @@ function BoardInner({ s, code, uid, onLeave }) {
     || (assassinTurn && !s.assassinPick && assassinOptions.includes(u));
 
   const ctx = {
-    s, p, code, uid, order, n, name, bySeat, run, setConfirm, isHost, my, team, draft, draftTeam,
+    s, p, code, uid, order, n, name, online, bySeat, run, setConfirm, isHost, my, team, draft, draftTeam,
     draftQuest, need, avail, targeting, toggleTeam, chooseQuest, writeDraft, ladyOptions, assassinOptions,
     evilList, pending, timeUp, setPanel, onLeave,
   };
@@ -155,10 +165,10 @@ function BoardInner({ s, code, uid, onLeave }) {
         <button type="button" class="btn btn-ghost btn-small" onClick=${() => setPanel('role')}>我的身分</button>
         <button type="button" class="btn btn-ghost btn-small" onClick=${() => setPanel('history')}>紀錄</button>
         <button type="button" class="btn btn-ghost btn-small" onClick=${() => openGuide('now')}>📖 說明</button>
-        ${isHost && html`<button type="button" class="btn btn-ghost btn-small" onClick=${() => setPanel('host')}>房主</button>`}
+        ${isHost && html`<button type="button" class="btn btn-ghost btn-small" onClick=${() => setPanel('host')} data-testid="host-menu">房主</button>`}
+        <button type="button" class="btn btn-ghost btn-small" onClick=${() => setConfirm({ kind: 'leave' })} data-testid="leave-game">回首頁</button>
       </div>
     </header>
-    ${!s.connected && html`<div class="conn-banner">連線中斷，正在重新連線…</div>`}
 
     <div class="board-main">
       <section class="board-left">
@@ -166,6 +176,9 @@ function BoardInner({ s, code, uid, onLeave }) {
           <span class="phase-name">${PHASE_TITLE[phase]}</span>
           ${phase !== 'night' && phase !== 'end' && html`<span class="muted">第 ${p.round} 輪・提案 ${p.attempt}／${MAX_REJECTIONS}</span>`}
           ${remaining !== null && html`<span class=${`timer${timeUp ? ' up' : remaining < 10000 ? ' soon' : ''}`}>${timeUp ? '⏰ 時間到' : `⏳ ${fmtTime(remaining)}`}</span>`}
+          <span class="host-chip" title="房主的瀏覽器負責推進遊戲">
+            <span class=${`dot ${hostAway ? 'off' : 'on'}`}></span>房主 ${name(hostUid)}
+          </span>
         </div>
         <${QuestTrack} p=${p} n=${n} current=${currentQuest}
           selectable=${phase === 'team' && p.leader === uid && targeting && !draft?.submitted ? avail : null}
@@ -176,6 +189,7 @@ function BoardInner({ s, code, uid, onLeave }) {
 
       <section class="board-right">
         <div class=${`action-panel${myTurn ? ' my-turn' : ''}`} data-testid="action-panel">
+          ${hostAway && html`<div class="notice host-away" role="status">房主 ${name(hostUid)} 離線中，遊戲會暫停；約 30 秒後由下一位在線玩家自動接手房主。</div>`}
           ${timeUp && phase !== 'end' && html`<div class="timeup">⏰ 時間到了！${phase === 'assassin' ? '請刺客盡快做出決定' : `請 ${pending.map(name).join('、')} 盡快行動`}</div>`}
           ${phase === 'night' && html`<${NightPanel} ctx=${ctx} key=${`night-${p.gid}`} />`}
           ${phase === 'team' && html`<${TeamPanel} ctx=${ctx} key=${`team-${p.round}-${p.attempt}`} />`}
@@ -184,6 +198,9 @@ function BoardInner({ s, code, uid, onLeave }) {
           ${phase === 'lady' && html`<${LadyPanel} ctx=${ctx} key=${`lady-${p.round}`} />`}
           ${phase === 'assassin' && html`<${AssassinPanel} ctx=${ctx} />`}
           ${phase === 'end' && html`<${EndPanel} ctx=${ctx} />`}
+          ${isHost && stuckInfo(s) && !['night', 'assassin'].includes(stuckInfo(s).kind) && html`
+            <div class="notice stuck">⚠️ 等待中的玩家離線了。房主可以到「房主」選單代為處理。
+              <button type="button" class="link-btn" onClick=${() => setPanel('host')}>開啟</button></div>`}
         </div>
         <div class="card log-card">
           <div class="log-head"><h3>遊戲日誌</h3><button type="button" class="link-btn" onClick=${() => setPanel('history')}>完整紀錄 ›</button></div>
@@ -197,7 +214,7 @@ function BoardInner({ s, code, uid, onLeave }) {
       <h4>投票與任務紀錄</h4><${HistoryTable} s=${s} />
       <h4>遊戲日誌</h4><${LogList} s=${s} />
     <//>`}
-    ${panel === 'host' && html`<${HostMenu} ctx=${ctx} onClose=${() => setPanel(null)} />`}
+    ${panel === 'host' && isHost && html`<${HostMenu} ctx=${ctx} onClose=${() => setPanel(null)} />`}
 
     ${!panel && !confirm && resultModal}
     ${confirm && html`<${ConfirmDialog} ctx=${ctx} confirm=${confirm} close=${() => setConfirm(null)} />`}
@@ -205,25 +222,29 @@ function BoardInner({ s, code, uid, onLeave }) {
 }
 
 function QuestTrack({ p, n, current, selectable, onSelect }) {
-  return html`<div class="quests" role="list" aria-label="任務進度">
+  return html`<div class="quests" aria-label="任務進度">
     ${[0, 1, 2, 3, 4].map((i) => {
       const q = p.quests?.[i];
       const open = selectable?.includes(i);
+      const two = failsRequired(n, i) === 2;
       const cls = ['quest', q?.result, i === current && 'current', open && 'open'].filter(Boolean).join(' ');
-      return html`<button type="button" role="listitem" class=${cls} key=${i} disabled=${!open}
-        onClick=${() => open && onSelect(i)} aria-label=${`任務 ${i + 1}`} data-testid=${`quest-${i}`}>
+      const label = q
+        ? `任務 ${i + 1}：${q.result === 'success' ? '成功' : '失敗'}，${q.fails} 張失敗牌`
+        : `任務 ${i + 1}：需要 ${QUEST_SIZES[n][i]} 人${two ? '，需 2 張失敗牌才會失敗' : ''}${open ? '（點擊選擇）' : ''}`;
+      return html`<button type="button" class=${cls} key=${i} disabled=${!open}
+        onClick=${() => open && onSelect(i)} aria-label=${label} data-testid=${`quest-${i}`}>
         <span class="quest-no">任務${i + 1}</span>
         ${q
           ? html`<${Art} svg=${q.result === 'success' ? TOKENS.success : TOKENS.fail} class="quest-art" />`
           : html`<span class="quest-size">${QUEST_SIZES[n][i]}<small>人</small></span>`}
-        ${q ? html`<span class="quest-sub">${q.fails} 失敗</span>` : failsRequired(n, i) === 2 && html`<span class="quest-sub warn">需2敗</span>`}
+        ${q ? html`<span class="quest-sub">${q.fails} 失敗</span>` : two && html`<span class="quest-sub warn">需2敗</span>`}
       </button>`;
     })}
   </div>`;
 }
 
 function RejectTrack({ attempt }) {
-  return html`<div class="rejects" aria-label="否決次數">
+  return html`<div class="rejects" aria-label=${`本輪已否決 ${Math.max(0, attempt - 1)} 次，5 次否決邪惡方獲勝`}>
     <span class="muted small">否決</span>
     ${[1, 2, 3, 4, 5].map((i) => html`<span key=${i} class=${`rej${i < attempt ? ' on' : ''}${i === 5 ? ' last' : ''}`}>${i}</span>`)}
     <span class="muted small">5 次否決＝邪惡勝</span>
@@ -231,7 +252,7 @@ function RejectTrack({ attempt }) {
 }
 
 function RoundTable({ ctx, clickSeat, seatSelectable, selectedTarget }) {
-  const { s, p, order, n, uid, name, draftTeam, pending, timeUp, evilList, my } = ctx;
+  const { s, p, order, n, uid, name, online, draftTeam, pending, timeUp, evilList, my } = ctx;
   const phase = p.phase;
   const base = Math.max(0, order.indexOf(uid));
   return html`<div class="table" data-testid="round-table">
@@ -250,7 +271,7 @@ function RoundTable({ ctx, clickSeat, seatSelectable, selectedTarget }) {
       const done = phase === 'night' ? !!s.ready?.[u] : phase === 'vote' ? !!s.voted?.[u] : phase === 'quest' ? !!s.played?.[u] : false;
       const reveal = p.reveal?.[u];
       const sees = my.sees?.[u];
-      const offline = s.loaded?.presence && !s.presence?.[u]?.online;
+      const offline = s.loaded?.presence && !online(u);
       const selectable = seatSelectable(u);
       const cls = ['seat',
         u === uid && 'me', onTeam && 'on-team', done && 'done', pending.includes(u) && 'pending',
@@ -266,7 +287,10 @@ function RoundTable({ ctx, clickSeat, seatSelectable, selectedTarget }) {
       else if (sees === 'merlinOrMorgana') chip = html`<span class="chip tiny merlin">梅林？</span>`;
       else if (offline) chip = html`<span class="chip tiny">離線</span>`;
       return html`<button type="button" class=${cls} key=${u} style=${`left:${x}%;top:${y}%`}
-        onClick=${() => selectable && clickSeat(u)} aria-disabled=${!selectable} data-testid=${`seat-${name(u)}`}>
+        onClick=${() => selectable && clickSeat(u)} aria-disabled=${!selectable}
+        aria-pressed=${phase === 'team' && p.leader === uid ? onTeam : undefined}
+        aria-label=${`${name(u)}${u === uid ? '（你）' : ''}${p.leader === u ? '，隊長' : ''}${offline ? '，離線' : ''}`}
+        data-testid=${`seat-${name(u)}`}>
         <span class="seat-avatar">
           ${reveal ? html`<${Art} svg=${roleBadgeSvg(reveal)} class="seat-role" />` : html`<${Avatar} uid=${u} name=${name(u)} />`}
           ${p.leader === u && phase !== 'end' && html`<${Art} svg=${TOKENS.crown} class="tok tok-leader" />`}
@@ -298,7 +322,7 @@ function Waiting({ ctx, uids, label }) {
   if (!uids.length) return null;
   return html`<div class="waiting-list">
     <span class="muted small">${label}：</span>
-    ${uids.map((u) => html`<span class=${`chip${ctx.timeUp ? ' late' : ''}`} key=${u}>${ctx.name(u)}</span>`)}
+    ${uids.map((u) => html`<span class=${`chip${ctx.timeUp ? ' late' : ''}`} key=${u}>${ctx.name(u)}${ctx.online(u) ? '' : '（離線）'}</span>`)}
   </div>`;
 }
 
@@ -311,9 +335,10 @@ function NightPanel({ ctx }) {
   return html`<div class="panel-body">
     <h3 class="panel-title">查看你的身分</h3>
     <p class="muted small">請確認旁邊沒有人在看你的螢幕，再翻開身分牌。之後可以隨時點上方「我的身分」再看一次。</p>
-    <button type="button" class=${`flip-card${shown ? ' shown' : ''}`} onClick=${() => role && setShown(!shown)} aria-label="翻開身分牌" data-testid="flip-card">
+    <button type="button" class=${`flip-card${shown ? ' shown' : ''}`} onClick=${() => role && setShown(!shown)}
+      aria-label=${shown ? '蓋上身分牌' : '翻開身分牌'} aria-pressed=${shown} disabled=${!role} data-testid="flip-card">
       <span class="flip-inner">
-        <span class="flip-front"><${Art} svg=${cardBackSvg()} /><span class="flip-hint">點擊翻開</span></span>
+        <span class="flip-front"><${Art} svg=${cardBackSvg()} /><span class="flip-hint">${role ? '點擊翻開' : '發牌中…'}</span></span>
         <span class="flip-back">${role && html`<${Art} svg=${roleSvg(role)} />`}</span>
       </span>
     </button>
@@ -338,6 +363,7 @@ function TeamPanel({ ctx }) {
         ? bySeat(draftTeam).map((u) => html`<span class="chip team" key=${u}>${name(u)}</span>`)
         : html`<span class="muted">尚未選擇</span>`}</div>
       <p class="muted small">趁現在在語音裡討論，建議隊長該選誰。</p>
+      <${Waiting} ctx=${ctx} uids=${[p.leader]} label="等待" />
     </div>`;
   }
   const submitted = !!draft?.submitted;
@@ -346,13 +372,14 @@ function TeamPanel({ ctx }) {
     ${targeting && html`
       <div class="know-title">① 選擇要挑戰的任務</div>
       <div class="quest-pick">${[0, 1, 2, 3, 4].map((i) => html`<button type="button" key=${i}
-        class=${`btn btn-small ${draftQuest === i ? 'btn-gold' : 'btn-ghost'}`}
+        class=${`btn btn-small ${draftQuest === i ? 'btn-gold' : 'btn-ghost'}`} aria-pressed=${draftQuest === i}
         disabled=${!avail.includes(i) || submitted} onClick=${() => chooseQuest(i)}>任務${i + 1}（${QUEST_SIZES[n][i]}人）</button>`)}</div>
       ${!avail.includes(4) && !p.quests?.[4] && html`<p class="muted small">第 5 個任務要先成功 2 個任務才能挑戰</p>`}`}
     <div class="know-title">${targeting ? '② ' : ''}選出 ${need ?? '?'} 位隊員（可以選自己）</div>
     <p class="muted small">點圓桌上的玩家，或點下面的名字</p>
     <div class="chips">${order.map((u) => html`<button type="button" key=${u} disabled=${submitted}
-      class=${`chip pickable${draftTeam.includes(u) ? ' on' : ''}`} onClick=${() => toggleTeam(u)} data-testid=${`pick-${name(u)}`}>${name(u)}</button>`)}</div>
+      class=${`chip pickable${draftTeam.includes(u) ? ' on' : ''}`} aria-pressed=${draftTeam.includes(u)}
+      onClick=${() => toggleTeam(u)} data-testid=${`pick-${name(u)}`}>${name(u)}</button>`)}</div>
     <button type="button" class="btn btn-gold btn-block" data-testid="propose"
       disabled=${need == null || draftTeam.length !== need || submitted}
       onClick=${() => setConfirm({ kind: 'team' })}>
@@ -380,9 +407,9 @@ function VotePanel({ ctx }) {
       ? html`<div class="done-note">✓ 你投了「${s.myVote === true ? '贊成' : s.myVote === false ? '反對' : '…'}」</div>`
       : html`
         <div class="choice-row">
-          <button type="button" class=${`choice approve${choice === true ? ' on' : ''}`} onClick=${() => setChoice(true)} data-testid="vote-approve">
+          <button type="button" class=${`choice approve${choice === true ? ' on' : ''}`} aria-pressed=${choice === true} onClick=${() => setChoice(true)} data-testid="vote-approve">
             <${Art} svg=${TOKENS.approve} /><span>贊成</span></button>
-          <button type="button" class=${`choice reject${choice === false ? ' on' : ''}`} onClick=${() => setChoice(false)} data-testid="vote-reject">
+          <button type="button" class=${`choice reject${choice === false ? ' on' : ''}`} aria-pressed=${choice === false} onClick=${() => setChoice(false)} data-testid="vote-reject">
             <${Art} svg=${TOKENS.reject} /><span>反對</span></button>
         </div>
         <button type="button" class="btn btn-gold btn-block" data-testid="vote-submit" disabled=${choice === null || sending} onClick=${submit}>
@@ -399,6 +426,7 @@ function QuestPanel({ ctx }) {
   const [sending, setSending] = useState(false);
   const onTeam = team.includes(uid);
   const played = !!s.played?.[uid];
+  const teamKnown = !!my.team;
   const isGood = my.team === 'good';
   const submit = async () => {
     setSending(true);
@@ -413,10 +441,12 @@ function QuestPanel({ ctx }) {
     ${onTeam && played && html`<div class="done-note">✓ 你出了「${s.myCard === 'F' ? '失敗' : s.myCard === 'S' ? '成功' : '…'}」</div>`}
     ${onTeam && !played && html`
       <div class="choice-row">
-        <button type="button" class=${`choice card-choice${choice === 'S' ? ' on' : ''}`} onClick=${() => setChoice('S')} data-testid="card-success">
+        <button type="button" class=${`choice card-choice${choice === 'S' ? ' on' : ''}`} aria-pressed=${choice === 'S'}
+          disabled=${!teamKnown} onClick=${() => setChoice('S')} data-testid="card-success">
           <${Art} svg=${TOKENS.successCard} /><span>成功</span></button>
-        <button type="button" class=${`choice card-choice${choice === 'F' ? ' on' : ''}`} disabled=${isGood}
-          onClick=${() => !isGood && setChoice('F')} data-testid="card-fail" title=${isGood ? '正義方只能出成功牌' : ''}>
+        <button type="button" class=${`choice card-choice${choice === 'F' ? ' on' : ''}`} aria-pressed=${choice === 'F'}
+          disabled=${!teamKnown || isGood} onClick=${() => teamKnown && !isGood && setChoice('F')} data-testid="card-fail"
+          title=${isGood ? '正義方只能出成功牌' : ''}>
           <${Art} svg=${TOKENS.failCard} /><span>失敗</span></button>
       </div>
       ${isGood && html`<p class="muted small center">正義方只能出「成功」。</p>`}
@@ -441,13 +471,14 @@ function LadyPanel({ ctx }) {
           : html`<div class="chips">${ladyOptions.map((u) => html`<button type="button" key=${u} class="chip pickable"
               onClick=${() => setConfirm({ kind: 'lady', target: u })} data-testid=${`lady-${name(u)}`}>${name(u)}</button>`)}</div>`}`
       : html`<p><b>${name(holder)}</b> 正在選擇要查驗的玩家。</p>
-        <p class="muted small">查驗結果只有湖中女神看得到，持有者可以自由宣稱結果（也可以說謊）。</p>`}
+        <p class="muted small">查驗結果只有湖中女神看得到，持有者可以自由宣稱結果（也可以說謊）。</p>
+        <${Waiting} ctx=${ctx} uids=${[holder]} label="等待" />`}
     <p class="muted small">曾持有湖中女神（不能被查驗）：${used.map(name).join('、')}</p>
   </div>`;
 }
 
 function AssassinPanel({ ctx }) {
-  const { s, p, name, bySeat, my, evilList, assassinOptions, setConfirm } = ctx;
+  const { s, name, bySeat, my, evilList, assassinOptions, setConfirm } = ctx;
   const isAssassin = my.role === 'assassin';
   return html`<div class="panel-body">
     <h3 class="panel-title">🗡️ 刺殺梅林</h3>
@@ -458,14 +489,14 @@ function AssassinPanel({ ctx }) {
       <p><b>你是刺客。</b>和邪惡同伴討論後，指認你認為是梅林的玩家：</p>
       <div class="chips">${assassinOptions.map((u) => html`<button type="button" key=${u} class="chip pickable"
         onClick=${() => setConfirm({ kind: 'assassin', target: u })} data-testid=${`assassin-${name(u)}`}>${name(u)}</button>`)}</div>`}
-    ${isAssassin && s.assassinPick && html`<div class="done-note">已指認 ${name(s.assassinPick.target)}，揭曉中…</div>`}
-    ${!isAssassin && my.team === 'evil' && html`<p class="muted">在語音中和刺客討論誰是梅林，由刺客做最後決定。</p>`}
-    ${my.team === 'good' && html`<p class="muted">刺客正在指認梅林……梅林，別露出破綻！</p>`}
+    ${s.assassinPick && html`<div class="done-note">已指認 ${name(s.assassinPick.target)}，揭曉中…</div>`}
+    ${!isAssassin && my.team === 'evil' && !s.assassinPick && html`<p class="muted">在語音中和刺客討論誰是梅林，由刺客做最後決定。</p>`}
+    ${my.team === 'good' && !s.assassinPick && html`<p class="muted">刺客正在指認梅林……梅林，別露出破綻！</p>`}
   </div>`;
 }
 
 function EndPanel({ ctx }) {
-  const { s, p, order, name, isHost, setConfirm, setPanel } = ctx;
+  const { p, order, name, isHost, setConfirm, setPanel } = ctx;
   const good = p.winner === 'good';
   const groups = ['good', 'evil'].map((t) => order.filter((u) => ROLES[p.reveal?.[u]]?.team === t));
   return html`<div class="panel-body">
@@ -486,29 +517,63 @@ function EndPanel({ ctx }) {
       <button type="button" class="btn btn-ghost btn-block" onClick=${() => setPanel('history')}>查看完整紀錄</button>
       ${isHost
         ? html`<button type="button" class="btn btn-gold btn-block" data-testid="play-again" onClick=${() => setConfirm({ kind: 'lobby' })}>再來一局（回到大廳）</button>`
-        : html`<p class="muted center">等待房主開始下一局…</p>`}
+        : html`<p class="muted center">等待房主開始下一局…（回到大廳後仍可查看上一局紀錄）</p>`}
       <button type="button" class="btn btn-ghost btn-block" onClick=${() => setConfirm({ kind: 'leave' })}>離開房間</button>
     </div>
   </div>`;
 }
 
+const STUCK_TEXT = {
+  vote: (names) => `${names} 離線且尚未投票 → 將他的票計為「反對」`,
+  quest: (names) => `${names} 離線且尚未出牌 → 視為出「成功」牌`,
+  team: (names) => `隊長 ${names} 離線 → 換下一位玩家擔任隊長（不計入否決次數）`,
+  lady: (names) => `湖中女神持有者 ${names} 離線 → 跳過這次查驗`,
+};
+
 function HostMenu({ ctx, onClose }) {
-  const { s, p, order, uid, name, code, run, setConfirm } = ctx;
+  const { s, p, order, uid, name, online, code, run, setConfirm, evilList } = ctx;
   const [target, setTarget] = useState('');
+  const [assassin, setAssassin] = useState(undefined);
   const others = order.filter((u) => u !== uid);
+  const stuck = stuckInfo(s);
+
+  useEffect(() => {
+    if (p.phase !== 'assassin') return;
+    findAssassin(code).then(setAssassin).catch(() => setAssassin(null));
+  }, [p.phase]);
+  const assassinOffline = p.phase === 'assassin' && !s.assassinPick && assassin && !online(assassin);
+
   return html`<${Modal} title="房主選單" onClose=${onClose}>
     <p class="muted small">房主的瀏覽器負責推進遊戲流程。如果你要離開，請先把房主交給其他人；房主斷線超過 30 秒時，系統也會自動交給下一位在線玩家。</p>
+
+    <div class="know-title">卡關處理</div>
+    ${stuck && STUCK_TEXT[stuck.kind]
+      ? html`<p class="small">${STUCK_TEXT[stuck.kind](stuck.who.map(name).join('、'))}</p>
+        <button type="button" class="btn btn-danger btn-block" data-testid="resolve-stuck"
+          onClick=${() => { onClose(); setConfirm({ kind: 'stuck', info: stuck }); }}>代為處理</button>`
+      : assassinOffline
+        ? html`<p class="small">刺客離線中。請在語音中和邪惡方（${evilList.map(name).join('、')}）確認他們要指認誰，再代為送出：</p>
+          <div class="chips">${order.filter((u) => !evilList.includes(u)).map((u) => html`<button type="button" key=${u} class="chip pickable"
+            onClick=${() => { onClose(); setConfirm({ kind: 'stuckAssassin', target: u }); }}>${name(u)}</button>`)}</div>`
+        : p.phase === 'night'
+          ? html`<button type="button" class="btn btn-ghost btn-block" onClick=${() => { onClose(); setConfirm({ kind: 'skipNight' }); }}>不等待確認身分，直接開始第一輪</button>`
+          : html`<p class="muted small">目前沒有離線玩家卡住遊戲。只有在等待中的玩家離線時，才能在這裡代為處理（倒數時間到不會自動處理）。</p>`}
+
     <div class="know-title">轉移房主</div>
     <div class="btn-row">
-      <select class="input" value=${target} onChange=${(e) => setTarget(e.currentTarget.value)}>
+      <label class="sr-only" for="host-transfer">選擇新的房主</label>
+      <select id="host-transfer" class="input" value=${target} onChange=${(e) => setTarget(e.currentTarget.value)}>
         <option value="">選擇玩家…</option>
-        ${others.map((u) => html`<option value=${u} key=${u}>${name(u)}${s.presence?.[u]?.online ? '' : '（離線）'}</option>`)}
+        ${others.map((u) => html`<option value=${u} key=${u}>${name(u)}${online(u) ? '' : '（離線）'}</option>`)}
       </select>
       <button type="button" class="btn btn-gold" disabled=${!target}
-        onClick=${() => run(async () => { await Room.transferHost(code, target); toast('已轉移房主', 'ok'); onClose(); })}>轉移</button>
+        onClick=${() => run(async () => {
+          await Room.transferHost(code, target, `房主交給 ${name(target)}`);
+          toast('已轉移房主', 'ok');
+          onClose();
+        })}>轉移</button>
     </div>
-    ${p.phase === 'night' && html`<div class="know-title">確認身分</div>
-      <button type="button" class="btn btn-ghost btn-block" onClick=${() => { onClose(); setConfirm({ kind: 'skipNight' }); }}>不等待，直接開始第一輪</button>`}
+
     <div class="know-title">結束本局</div>
     <button type="button" class="btn btn-danger btn-block" onClick=${() => { onClose(); setConfirm({ kind: 'lobby' }); }}>
       ${p.phase === 'end' ? '回到大廳' : '中止遊戲並回到大廳'}</button>
@@ -516,7 +581,7 @@ function HostMenu({ ctx, onClose }) {
 }
 
 function ConfirmDialog({ ctx, confirm, close }) {
-  const { s, p, code, uid, name, bySeat, draftTeam, draftQuest, writeDraft, onLeave } = ctx;
+  const { s, p, code, name, bySeat, draftTeam, draftQuest, writeDraft, onLeave, run } = ctx;
   const t = confirm.target;
   const base = { onCancel: close };
   switch (confirm.kind) {
@@ -527,23 +592,31 @@ function ConfirmDialog({ ctx, confirm, close }) {
     case 'lady':
       return html`<${ConfirmModal} ...${base} title="湖中女神" confirmText="查驗"
         message=${`確定要查驗 ${name(t)} 的陣營嗎？查驗後湖中女神會交給 ${name(t)}。`}
-        onConfirm=${async () => { await ctx.run(() => Room.pickLady(code, t, p.round)); close(); }} />`;
+        onConfirm=${async () => { await run(() => Room.pickLady(code, t, p.round)); close(); }} />`;
     case 'assassin':
       return html`<${ConfirmModal} ...${base} title="刺殺梅林" danger confirmText="就是他！"
         message=${`確定指認 ${name(t)} 是梅林嗎？這個決定無法反悔。`}
-        onConfirm=${async () => { await ctx.run(() => Room.pickAssassin(code, t)); close(); }} />`;
+        onConfirm=${async () => { await run(() => Room.pickAssassin(code, t)); close(); }} />`;
     case 'skipNight':
       return html`<${ConfirmModal} ...${base} title="直接開始"
         message="還有玩家沒有確認身分。確定不等待，直接進入第一輪嗎？（他們之後仍可查看身分）"
-        onConfirm=${async () => { await ctx.run(() => skipNight(code, s)); close(); }} />`;
+        onConfirm=${async () => { await run(() => skipNight(code, s)); close(); }} />`;
+    case 'stuck':
+      return html`<${ConfirmModal} ...${base} title="代為處理離線玩家" danger confirmText="確定處理"
+        message=${`${STUCK_TEXT[confirm.info.kind](confirm.info.who.map(name).join('、'))}。這會記錄在遊戲日誌中，確定嗎？`}
+        onConfirm=${async () => { await run(() => resolveStuck(code, s)); close(); }} />`;
+    case 'stuckAssassin':
+      return html`<${ConfirmModal} ...${base} title="代替刺客指認" danger confirmText="確定指認"
+        message=${`代替離線的刺客指認 ${name(t)} 是梅林？請確認這是邪惡方討論的結果，送出後無法反悔。`}
+        onConfirm=${async () => { await run(() => resolveStuck(code, s, undefined, { target: t })); close(); }} />`;
     case 'lobby':
       return html`<${ConfirmModal} ...${base} title=${p.phase === 'end' ? '再來一局' : '中止遊戲'} danger=${p.phase !== 'end'}
         confirmText=${p.phase === 'end' ? '回到大廳' : '中止遊戲'}
-        message=${p.phase === 'end' ? '所有人會回到大廳，可以調整設定後開始新的一局。' : '遊戲還沒結束！確定要中止並讓所有人回到大廳嗎？'}
-        onConfirm=${async () => { await ctx.run(() => backToLobby(code)); close(); }} />`;
+        message=${p.phase === 'end' ? '所有人會回到大廳，可以調整設定後開始新的一局（大廳仍可查看這局的紀錄）。' : '遊戲還沒結束！確定要中止並讓所有人回到大廳嗎？'}
+        onConfirm=${async () => { await run(() => backToLobby(code)); close(); }} />`;
     case 'leave':
-      return html`<${ConfirmModal} ...${base} title="離開房間" danger confirmText="離開"
-        message=${p.phase === 'end' ? '確定要離開房間嗎？' : '遊戲進行中！離開後其他人可能會卡住。你可以用同一台裝置輸入房間代碼回來。'}
+      return html`<${ConfirmModal} ...${base} title=${p.phase === 'end' ? '離開房間' : '回到首頁'} danger confirmText=${p.phase === 'end' ? '離開' : '回首頁'}
+        message=${p.phase === 'end' ? '確定要離開房間嗎？' : '遊戲還在進行中，你的座位會保留。回首頁後輸入同一個房間代碼就能回來；離開太久其他人可能會卡住。'}
         onConfirm=${async () => { close(); await onLeave(); }} />`;
     default:
       return null;

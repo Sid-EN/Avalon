@@ -1,8 +1,8 @@
 // 規則邏輯單元測試：node --test tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as G from '../js/game.js';
-import { TEAM_COUNTS, QUEST_SIZES } from '../js/rules.js';
+import * as G from '../../js/game.js';
+import { TEAM_COUNTS, QUEST_SIZES } from '../../js/rules.js';
 
 const uids = (n) => Array.from({ length: n }, (_, i) => `u${i}`);
 const all = { merlinAssassin: true, percival: true, morgana: true, mordred: true, oberon: true };

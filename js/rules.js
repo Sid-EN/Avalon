@@ -39,6 +39,3 @@ export const ROLES = {
   oberon:   { name: '奧伯倫',     team: 'evil', special: true },
   minion:   { name: '莫德雷德的爪牙', team: 'evil', special: false },
 };
-
-export const SPECIAL_GOOD = ['merlin', 'percival'];
-export const SPECIAL_EVIL = ['assassin', 'morgana', 'mordred', 'oberon'];

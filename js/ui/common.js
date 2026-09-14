@@ -1,5 +1,5 @@
 // 共用小元件與工具
-import { html, useState, useEffect, useLayoutEffect } from '../vendor/preact-htm.js';
+import { html, useState, useEffect, useLayoutEffect, useRef } from '../vendor/preact-htm.js';
 
 export const store = {
   get(key, fallback = null) {
@@ -50,14 +50,21 @@ export function Toasts() {
 }
 
 export function Modal({ title, onClose, children, wide = false, closable = true }) {
+  const box = useRef(null);
   // 用 layout effect 立即掛上 Esc 監聽，避免視窗剛打開時按 Esc 沒反應
   useLayoutEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && closable) onClose?.(); };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [onClose, closable]);
+  // 打開時把焦點移進視窗（鍵盤與螢幕報讀器使用者），關閉時還原
+  useLayoutEffect(() => {
+    const previous = document.activeElement;
+    box.current?.focus({ preventScroll: true });
+    return () => { if (previous?.focus && document.contains(previous)) previous.focus({ preventScroll: true }); };
+  }, []);
   return html`<div class="modal-backdrop" onClick=${(e) => { if (e.target === e.currentTarget && closable) onClose?.(); }}>
-    <div class=${`modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label=${title}>
+    <div class=${`modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label=${title} tabindex="-1" ref=${box}>
       ${title && html`<div class="modal-head">
         <h3>${title}</h3>
         ${closable && html`<button type="button" class="icon-btn" onClick=${onClose} aria-label="關閉">✕</button>`}

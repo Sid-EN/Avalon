@@ -128,9 +128,12 @@ export function HistoryTable({ s }) {
 
 export function LogList({ s, limit = 0 }) {
   const box = useRef(null);
-  let entries = Object.entries(s.log || {}).sort(([a], [b]) => (a < b ? -1 : 1)).map(([, e]) => e);
+  const sorted = Object.entries(s.log || {}).sort(([a], [b]) => (a < b ? -1 : 1));
+  const lastKey = sorted.length ? sorted[sorted.length - 1][0] : '';
+  let entries = sorted.map(([, e]) => e);
   if (limit) entries = entries.slice(-limit);
-  useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [entries.length]);
+  // 以最新一筆的鍵值判斷有沒有新紀錄（有 limit 時筆數不會變）
+  useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [lastKey]);
   const fmt = (t) => {
     if (!t) return '';
     const d = new Date(t);

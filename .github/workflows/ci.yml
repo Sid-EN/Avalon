@@ -1,0 +1,112 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: 語法檢查・單元測試・功能測試
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝套件
+        run: npm ci
+
+      - name: 語法檢查
+        run: npm run check:syntax
+
+      - name: 單元測試（規則表、遊戲邏輯、安全規則產生器、插圖）
+        run: npm run test:unit
+
+      - name: 功能測試（房主裁判完整流程）
+        run: npm run test:functional
+
+  emulator:
+    name: 安全規則測試・系統測試（多人瀏覽器）
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 安裝套件
+        run: npm ci
+
+      - name: 快取 Firebase 模擬器
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+
+      - name: 安裝 Playwright 瀏覽器
+        run: npx playwright install --with-deps chromium
+
+      - name: 安全規則測試＋系統測試（Firebase 模擬器）
+        run: npm run test:emulator
+
+      - name: 上傳測試報告
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: [unit, emulator]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: 輸出網站檔案
+        run: node tools/build-site.mjs
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5
