@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="失敗">
+<defs><linearGradient id="qc-f-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a2222"/><stop offset="1" stop-color="#1b0505"/></linearGradient><linearGradient id="qc-f-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8e7ad"/><stop offset=".5" stop-color="#d6a84c"/><stop offset="1" stop-color="#8d6521"/></linearGradient></defs>
+<rect x="2" y="2" width="96" height="136" rx="10" fill="url(#qc-f-bg)" stroke="#8d6521" stroke-width="3"/>
+<rect x="8" y="8" width="84" height="124" rx="6" fill="none" stroke="url(#qc-f-g)" stroke-width="1.5"/>
+<circle cx="50" cy="62" r="34" fill="rgba(0,0,0,.25)" stroke="url(#qc-f-g)" stroke-width="2"/>
+<g transform="translate(18 26)"><path d="M32 6 L37 16 V38 H27 V16Z" fill="#e9edf2" stroke="#3a3f48" stroke-width="1.5"/><rect x="19" y="38" width="26" height="5" rx="2.5" fill="#d6a84c" stroke="#5a3a0c"/><rect x="29" y="43" width="6" height="10" rx="1.5" fill="#4a2e10"/><circle cx="32" cy="56" r="3.5" fill="#d6a84c" stroke="#5a3a0c"/></g>
+<text x="50" y="120" text-anchor="middle" font-size="17" font-weight="900" fill="#ffd6cc" font-family="'Noto Serif TC',serif">失敗</text>
+</svg>

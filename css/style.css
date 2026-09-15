@@ -135,6 +135,8 @@ select.input, .timer-field select { appearance: auto; }
 /* ── 大廳 ── */
 .lobby-grid { display: grid; gap: 16px; max-width: 1100px; margin: 16px auto 0; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .lobby-grid .settings { grid-column: 2; grid-row: 1 / span 2; }
+/* 右側設定卡跨兩列：第一列只佔房間代碼卡的高度，多出來的高度給第二列，避免左側出現空白 */
+@media (min-width: 821px) { .lobby-grid { grid-template-rows: auto 1fr; } }
 @media (max-width: 820px) {
   .lobby-grid { grid-template-columns: minmax(0, 1fr); }
   .lobby-grid .settings { grid-column: auto; grid-row: auto; }

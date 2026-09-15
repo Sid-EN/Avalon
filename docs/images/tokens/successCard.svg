@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="成功">
+<defs><linearGradient id="qc-s-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f579f"/><stop offset="1" stop-color="#0a1531"/></linearGradient><linearGradient id="qc-s-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8e7ad"/><stop offset=".5" stop-color="#d6a84c"/><stop offset="1" stop-color="#8d6521"/></linearGradient></defs>
+<rect x="2" y="2" width="96" height="136" rx="10" fill="url(#qc-s-bg)" stroke="#8d6521" stroke-width="3"/>
+<rect x="8" y="8" width="84" height="124" rx="6" fill="none" stroke="url(#qc-s-g)" stroke-width="1.5"/>
+<circle cx="50" cy="62" r="34" fill="rgba(0,0,0,.25)" stroke="url(#qc-s-g)" stroke-width="2"/>
+<path d="M18 14 H46 Q46 34 34 38 V48 H42 V54 H22 V48 H30 V38 Q18 34 18 14Z" transform="translate(18 30) scale(1)" fill="url(#qc-s-g)" stroke="#3a2708" stroke-width="1.5"/>
+<text x="50" y="120" text-anchor="middle" font-size="17" font-weight="900" fill="#dfeaff" font-family="'Noto Serif TC',serif">成功</text>
+</svg>

@@ -1,0 +1,27 @@
+<svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="莫甘娜">
+<defs>
+<radialGradient id="c-morgana-bg" cx="50%" cy="38%" r="80%"><stop offset="0" stop-color="#7f2222"/><stop offset="1" stop-color="#1b0505"/></radialGradient>
+<radialGradient id="c-morgana-glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff9a7a" stop-opacity=".5"/><stop offset="1" stop-color="#ff9a7a" stop-opacity="0"/></radialGradient>
+<linearGradient id="c-morgana-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8e7ad"/><stop offset=".5" stop-color="#d6a84c"/><stop offset="1" stop-color="#8d6521"/></linearGradient>
+</defs>
+<rect x="2" y="2" width="196" height="276" rx="14" fill="url(#c-morgana-bg)" stroke="#8d6521" stroke-width="3"/>
+<g fill="none" stroke="url(#c-morgana-gold)"><rect x="11" y="11" width="178" height="258" rx="9" stroke-width="2"/><rect x="17" y="17" width="166" height="246" rx="6" stroke-width="1" stroke-dasharray="2 5" opacity=".6"/></g>
+<path d="M0-7L7 0 0 7-7 0z" transform="translate(11 11)" fill="url(#c-morgana-gold)" stroke="#5a3a0c"/><path d="M0-7L7 0 0 7-7 0z" transform="translate(189 11)" fill="url(#c-morgana-gold)" stroke="#5a3a0c"/><path d="M0-7L7 0 0 7-7 0z" transform="translate(11 269)" fill="url(#c-morgana-gold)" stroke="#5a3a0c"/><path d="M0-7L7 0 0 7-7 0z" transform="translate(189 269)" fill="url(#c-morgana-gold)" stroke="#5a3a0c"/>
+<g opacity=".22" stroke="#ff9a7a" stroke-width="1.2"><line x1="170.0" y1="118.0" x2="194.0" y2="118.0"/><line x1="164.7" y1="144.8" x2="186.8" y2="154.0"/><line x1="149.5" y1="167.5" x2="166.5" y2="184.5"/><line x1="126.8" y1="182.7" x2="136.0" y2="204.8"/><line x1="100.0" y1="188.0" x2="100.0" y2="212.0"/><line x1="73.2" y1="182.7" x2="64.0" y2="204.8"/><line x1="50.5" y1="167.5" x2="33.5" y2="184.5"/><line x1="35.3" y1="144.8" x2="13.2" y2="154.0"/><line x1="30.0" y1="118.0" x2="6.0" y2="118.0"/><line x1="35.3" y1="91.2" x2="13.2" y2="82.0"/><line x1="50.5" y1="68.5" x2="33.5" y2="51.5"/><line x1="73.2" y1="53.3" x2="64.0" y2="31.2"/><line x1="100.0" y1="48.0" x2="100.0" y2="24.0"/><line x1="126.8" y1="53.3" x2="136.0" y2="31.2"/><line x1="149.5" y1="68.5" x2="166.5" y2="51.5"/><line x1="164.7" y1="91.2" x2="186.8" y2="82.0"/></g>
+<circle cx="100" cy="118" r="86" fill="url(#c-morgana-glow)"/>
+<circle cx="100" cy="118" r="64" fill="rgba(0,0,0,.28)" stroke="url(#c-morgana-gold)" stroke-width="3"/>
+<circle cx="100" cy="118" r="57" fill="none" stroke="url(#c-morgana-gold)" stroke-width="1" opacity=".5"/>
+<g stroke="#2b1d08" stroke-width="1.4" stroke-linejoin="round">
+    <path d="M122 60 A60 60 0 1 0 156 152 A49 49 0 1 1 122 60Z" fill="url(#c-morgana-gold)"/>
+    <g stroke="none" fill="#f3d0ff">
+      <path d="M128 100l3 6.5 7 1-5 5 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5-5 7-1z"/>
+      <path d="M144 80l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6z"/>
+      <path d="M150 140l1.4 3.4 3.4 1.4-3.4 1.4-1.4 3.4-1.4-3.4-3.4-1.4 3.4-1.4z"/>
+    </g>
+    <path d="M78 104 Q90 96 102 104 Q90 112 78 104Z" fill="#1a0610"/>
+    <circle cx="90" cy="104" r="3" fill="#d58cff" stroke="none"/></g>
+<path d="M24 214 L12 222 L18 248Z M176 214 L188 222 L182 248Z" fill="#cdb98a" stroke="#8d6521" stroke-width="1.5"/>
+<path d="M24 214 Q100 200 176 214 L182 248 Q100 234 18 248Z" fill="#efe1bb" stroke="#8d6521" stroke-width="2"/>
+<text x="100" y="235.5" text-anchor="middle" font-size="19" font-weight="700" fill="#2b1d08" font-family="'Noto Serif TC','Songti TC',serif">莫甘娜</text>
+<text x="100" y="262" text-anchor="middle" font-size="9.5" letter-spacing="2" fill="#ffb8a8" font-family="'Noto Serif TC',serif">邪惡・莫德雷德的爪牙</text>
+</svg>
