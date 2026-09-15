@@ -26,6 +26,10 @@
           "createdAt": {
             ".validate": "newData.isNumber()"
           },
+          "locked": {
+            ".write": "(auth != null && root.child('rooms/'+$code+'/meta/hostUid').val() === auth.uid)",
+            ".validate": "newData.isBoolean()"
+          },
           "lastActive": {
             ".write": "(auth != null && root.child('rooms/'+$code+'/meta/hostUid').val() === auth.uid) || (auth != null && root.child('rooms/'+$code+'/players/'+auth.uid+'').exists())",
             ".validate": "newData.isNumber() && newData.val() <= now"
@@ -39,7 +43,7 @@
           ".write": "(auth != null && root.child('rooms/'+$code+'/meta/hostUid').val() === auth.uid)",
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && (newData.exists() ? (data.exists() || (root.child('rooms/'+$code+'/meta/status').val() === 'lobby' && !root.child('rooms/'+$code+'/kicked/'+$uid+'').exists())) : (root.child('rooms/'+$code+'/meta/status').val() === 'lobby' || root.child('rooms/'+$code+'/meta/status').val() === 'ended'))",
+            ".write": "auth != null && auth.uid === $uid && (newData.exists() ? (data.exists() ? (root.child('rooms/'+$code+'/meta/status').val() === 'lobby' || newData.child('name').val() === data.child('name').val()) : (root.child('rooms/'+$code+'/meta/status').val() === 'lobby' && !root.child('rooms/'+$code+'/kicked/'+$uid+'').exists() && root.child('rooms/'+$code+'/meta/locked').val() !== true)) : (root.child('rooms/'+$code+'/meta/status').val() === 'lobby' || root.child('rooms/'+$code+'/meta/status').val() === 'ended'))",
             ".validate": "newData.hasChildren(['name', 'joinedAt'])",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"

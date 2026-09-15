@@ -79,6 +79,13 @@ export function Lobby({ s, code, uid, onLeave }) {
           <button type="button" class="btn btn-ghost btn-small" onClick=${() => copyText(link)}>複製邀請連結</button>
         </div>
         <p class="muted small">把代碼或連結貼到 Discord／LINE，朋友開啟網頁輸入代碼就能加入。</p>
+        ${isHost
+          ? html`<label class="lock-toggle" title="人到齊後鎖定，避免陌生人或被移出的人換個瀏覽器再加入">
+              <input type="checkbox" checked=${!!s.meta?.locked} data-testid="lock-room"
+                onChange=${(e) => act(Room.setRoomLocked(code, e.currentTarget.checked))} />
+              🔒 鎖定房間（不再接受新玩家）
+            </label>`
+          : s.meta?.locked && html`<p class="small muted">🔒 房主已鎖定房間</p>`}
         ${hasLastGame && html`<button type="button" class="btn btn-ghost btn-small center-block" onClick=${() => setShowLast(true)} data-testid="last-game">查看上一局紀錄</button>`}
       </section>
 

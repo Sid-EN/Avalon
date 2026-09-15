@@ -332,6 +332,25 @@ describe('房主接手', () => {
   });
 });
 
+describe('暱稱與鎖定房間', () => {
+  test('遊戲進行中不能改暱稱（避免改成別人的名字冒充）；大廳可以', async () => {
+    await seed();
+    await assertFails(at('merlin', 'players/merlin/name').set('host'));
+    await seed({ 'meta/status': 'lobby' });
+    await assertSucceeds(at('merlin', 'players/merlin/name').set('大法師'));
+  });
+  test('只有房主能鎖定房間；鎖定後新玩家不能加入，已在房內的玩家不受影響', async () => {
+    await seed({ 'meta/status': 'lobby' });
+    await assertFails(at('merlin', 'meta/locked').set(true));
+    await assertSucceeds(at('host', 'meta/locked').set(true));
+    await assertFails(at('host', 'meta/locked').set('yes'));
+    await assertFails(at('newbie', 'players/newbie').set({ name: '新人', joinedAt: TS }));
+    await assertSucceeds(at('merlin', 'players/merlin/name').set('大法師'));
+    await assertSucceeds(at('host', 'meta/locked').set(false));
+    await assertSucceeds(at('newbie', 'players/newbie').set({ name: '新人', joinedAt: TS }));
+  });
+});
+
 describe('房間索引與舊房間清理', () => {
   test('只有房主或房內玩家能寫入房間索引，不能搶佔別人的代碼', async () => {
     await assertFails(dbAs('squatter').ref('roomIndex/QQQQ').set(0));

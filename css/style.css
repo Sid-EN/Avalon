@@ -398,6 +398,15 @@ select.input, .timer-field select { appearance: auto; }
 .toast.turn { border-color: var(--gold); background: linear-gradient(180deg, #5a4318, #2e2310); font-weight: 800; font-size: 1.05rem; }
 
 /* ── 檢查後補強 ── */
+/* 下拉選單：黑底白字（瀏覽器預設的選項清單在深色主題下會看不清楚） */
+select, .timer-field select, select.input {
+  background-color: #05070d; color: #ffffff; border: 1px solid var(--line2); color-scheme: dark;
+}
+select option, select optgroup { background-color: #05070d; color: #ffffff; }
+select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(214, 168, 76, .25); }
+select:disabled { opacity: 1; color: #ece6d6; background-color: #0b0f1a; border-style: dashed; cursor: not-allowed; }
+.lock-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: .9rem; cursor: pointer; }
+.lock-toggle input { width: 18px; height: 18px; accent-color: var(--gold); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .conn-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 70; margin: 0; box-shadow: var(--shadow); }
 .icon-btn { width: 40px; height: 40px; }

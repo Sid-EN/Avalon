@@ -52,6 +52,7 @@ export function buildRules() {
               '.validate': "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'ended'",
             },
             createdAt: { '.validate': 'newData.isNumber()' },
+            locked: { '.write': HOST, '.validate': 'newData.isBoolean()' },
             lastActive: { '.write': `${HOST} || ${MEMBER}`, '.validate': 'newData.isNumber() && newData.val() <= now' },
             $other: { '.validate': false },
           },
@@ -59,7 +60,12 @@ export function buildRules() {
             ...memberReadHostWrite,
             $uid: {
               '.read': SELF,
-              '.write': `${SELF} && (newData.exists() ? (data.exists() || (${STATUS('lobby')} && !${R("kicked/'+$uid+'")}.exists())) : (${STATUS('lobby')} || ${STATUS('ended')}))`,
+              // 加入：只能在大廳、沒被移出、房間沒鎖定；改名：只能在大廳（避免遊戲中改成別人的名字冒充）
+              '.write': `${SELF} && (newData.exists()
+                ? (data.exists()
+                  ? (${STATUS('lobby')} || newData.child('name').val() === data.child('name').val())
+                  : (${STATUS('lobby')} && !${R("kicked/'+$uid+'")}.exists() && ${R('meta/locked')}.val() !== true))
+                : (${STATUS('lobby')} || ${STATUS('ended')}))`.replace(/\s*\n\s*/g, ' '),
               '.validate': "newData.hasChildren(['name', 'joinedAt'])",
               name: { '.validate': 'newData.isString() && newData.val().length >= 1 && newData.val().length <= 12' },
               joinedAt: { '.validate': 'newData.isNumber()' },

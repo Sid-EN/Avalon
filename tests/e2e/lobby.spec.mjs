@@ -90,6 +90,26 @@ test.describe('大廳', () => {
     await expect(guest.page.locator('.toast', { hasText: '你已被房主移出這個房間' })).toBeVisible();
   });
 
+  test('房主鎖定房間後新玩家無法加入，解鎖後可以加入', async ({ browser }) => {
+    const code = await room(browser, 2);
+    const [host, guest] = players;
+    await host.page.getByTestId('lock-room').check();
+    await expect(guest.page.getByText('房主已鎖定房間')).toBeVisible();
+
+    const [late] = await newPlayers(browser, 1, { prefix: 'L' });
+    players.push(late);
+    await late.page.goto(BASE);
+    await late.page.getByTestId('name-input').fill(late.name);
+    await late.page.getByTestId('code-input').fill(code);
+    await late.page.getByTestId('join-room').click();
+    await expect(late.page.locator('.toast', { hasText: '房主已鎖定房間' })).toBeVisible();
+
+    await host.page.getByTestId('lock-room').uncheck();
+    await expect(guest.page.getByText('房主已鎖定房間')).toHaveCount(0);
+    await late.page.getByTestId('join-room').click();
+    await expect(late.page.getByTestId('room-code')).toHaveText(code);
+  });
+
   test('轉移房主後，原房主離開房間', async ({ browser }) => {
     await room(browser, 3);
     const [host, next, third] = players;

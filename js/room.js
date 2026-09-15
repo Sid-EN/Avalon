@@ -70,6 +70,7 @@ export async function joinRoom(code, uid, name) {
     return meSnap.val().name;
   }
   if (meta.status !== 'lobby') throw new Error('這個房間的遊戲已經開始，無法加入');
+  if (meta.locked) throw new Error('房主已鎖定房間，暫時不接受新玩家');
   if ((await get(rref(code, `kicked/${uid}`))).exists()) throw new Error('你已被房主移出這個房間');
 
   await set(rref(code, `players/${uid}`), { name, joinedAt: serverTimestamp() });
@@ -210,6 +211,7 @@ export const pickAssassin = (code, target) => set(rref(code, 'assassinPick'), { 
 // ── 房主操作 ──
 export const updateSettings = (code, patch) => update(rref(code, 'settings'), patch);
 export const setOrder = (code, order) => set(rref(code, 'settings/order'), order);
+export const setRoomLocked = (code, locked) => set(rref(code, 'meta/locked'), !!locked);
 // 轉移房主；有日誌文字時在同一次寫入記錄（寫入後自己就不是房主，不能再寫日誌）
 export const transferHost = (code, uid, logText) => update(rref(code), {
   'meta/hostUid': uid,

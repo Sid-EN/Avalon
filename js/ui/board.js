@@ -27,7 +27,6 @@ function BoardInner({ s, code, uid, onLeave }) {
   const phase = p.phase;
   const isHost = s.meta?.hostUid === uid;
   const my = s.secret || {};
-  const now = useNow(s.serverOffset || 0);
   const [panel, setPanel] = useState(null);
   const [confirm, setConfirm] = useState(null);
   const [seen, setSeen] = useState(() => new Set(store.get(`avalon.seen.${code}`, [])));
@@ -70,6 +69,7 @@ function BoardInner({ s, code, uid, onLeave }) {
   const myTurn = phase === 'assassin' ? assassinTurn && !s.assassinPick : pending.includes(uid);
 
   const limit = TIMED_PHASES.includes(phase) ? (p.settings?.timers?.[phase] || 0) : 0;
+  const now = useNow(s.serverOffset || 0, limit ? 500 : 0);
   const remaining = limit && p.phaseAt ? p.phaseAt + limit * 1000 - now : null;
   const timeUp = remaining !== null && remaining <= 0;
   const hostUid = s.meta?.hostUid;

@@ -99,6 +99,7 @@ export function useNow(offset = 0, interval = 500) {
   const [now, setNow] = useState(() => Date.now() + offset);
   useEffect(() => {
     setNow(Date.now() + offset);
+    if (!interval) return undefined; // 沒有倒數時不需要每秒重畫，省手機電量
     const t = setInterval(() => setNow(Date.now() + offset), interval);
     return () => clearInterval(t);
   }, [offset, interval]);
