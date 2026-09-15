@@ -1,0 +1,10 @@
+flowchart LR
+    GH["📦 GitHub Pages<br/>靜態網頁"] -->|載入網頁| UI
+    subgraph B["每位玩家的瀏覽器（手機／電腦）"]
+        UI["🖥️ 遊戲介面<br/>Preact + htm"]
+        HE["🎲 房主瀏覽器<br/>裁判：計票、判定、推進流程"]
+    end
+    UI <-->|即時同步| DB[("🔥 Firebase<br/>Realtime Database<br/>＋ 匿名登入")]
+    HE <-->|寫入遊戲狀態| DB
+    RULES["🛡️ 安全規則<br/>database.rules.json"] -.->|保護讀寫| DB
+    CI["⚙️ GitHub Actions<br/>測試全部通過"] -->|自動部署| GH

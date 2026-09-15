@@ -112,6 +112,11 @@ export function fmtTime(ms) {
 
 export function errMsg(e) {
   const m = String(e?.message || e || '');
+  // Firebase 專案設定不完整時，直接告訴房主要去哪裡修正
+  if (/auth\/configuration-not-found/.test(m)) return 'Firebase 尚未開啟「Authentication」。請到 Firebase 主控台 → Authentication 按「開始使用」，並在「登入方式」啟用「匿名」（見 docs/SETUP.md 第一部分第 2 步）';
+  if (/auth\/(admin-restricted-operation|operation-not-allowed)/.test(m)) return 'Firebase 尚未啟用匿名登入。請到 Firebase 主控台 → Authentication → 登入方式，啟用「匿名」';
+  if (/auth\/(unauthorized-domain|requests-from-referer)/.test(m)) return `這個網址尚未被 Firebase 授權。請到 Authentication → 設定 → 授權網域，加入 ${location.hostname}`;
+  if (/auth\/(api-key-not-valid|invalid-api-key)/.test(m)) return 'Firebase 設定碼（apiKey）不正確，請檢查 js/firebase-config.js';
   if (/permission/i.test(m)) return '操作被拒絕（遊戲狀態可能已改變，請稍後再試）';
   if (/network|offline|disconnect/i.test(m)) return '網路連線有問題，請檢查網路';
   return m || '發生錯誤，請再試一次';

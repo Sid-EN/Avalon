@@ -18,7 +18,8 @@
     "test": "npm run check:syntax && npm run test:unit && npm run test:functional",
     "test:emulator": "firebase emulators:exec --only auth,database --project demo-avalon \"npm run test:rules && npm run test:e2e\"",
     "test:all": "npm test && npm run test:emulator",
-    "readme:assets": "firebase emulators:exec --only auth,database --project demo-avalon \"node tools/readme-assets.mjs\""
+    "readme:diagrams": "node tools/readme-diagrams.mjs",
+    "readme:assets":"firebase emulators:exec --only auth,database --project demo-avalon \"node tools/readme-assets.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

@@ -160,34 +160,13 @@
 
 ### 🔄 遊戲流程
 
-```mermaid
-flowchart TD
-    N(["🌙 夜晚：翻開身分牌"]) --> T
-    T["👑 隊長組隊<br/>選出指定人數的隊員"] --> V{"🗳️ 全員投票<br/>超過半數贊成？"}
-    V -- "否決（平手也算）" --> R{"本輪第 5 次否決？"}
-    R -- 是 --> EV1(["😈 邪惡方獲勝"])
-    R -- 否 --> L["隊長交給下一位（順時針）"]
-    L --> T
-    V -- 通過 --> Q["⚔️ 隊員秘密出任務牌<br/>正義方只能出成功"]
-    Q --> F{"失敗牌張數<br/>達到門檻？"}
-    F -- "是：任務失敗" --> F3{"已失敗 3 個任務？"}
-    F -- "否：任務成功" --> S3{"已成功 3 個任務？"}
-    F3 -- 是 --> EV2(["😈 邪惡方獲勝"])
-    S3 -- 是 --> A{"🗡️ 刺客指認梅林"}
-    A -- 猜中 --> EV3(["😈 邪惡方逆轉獲勝"])
-    A -- 猜錯 --> GD(["😇 正義方獲勝"])
-    F3 -- 否 --> LK{"湖中女神？<br/>第 2・3・4 個任務後"}
-    S3 -- 否 --> LK
-    LK -- 使用 --> LD["🧜 持有者秘密查驗一人陣營"] --> L
-    LK -- 不使用 --> L
-
-    classDef evil fill:#5a1414,stroke:#e5604a,color:#fff
-    classDef good fill:#1d3a6e,stroke:#6a9ff2,color:#fff
-    classDef step fill:#2b2414,stroke:#d6a84c,color:#f1d58a
-    class EV1,EV2,EV3 evil
-    class GD good
-    class N,T,Q,LD,L step
-```
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/diagram-game-flow-dark.png">
+  <img src="docs/images/diagram-game-flow-light.png" alt="遊戲流程圖：夜晚翻牌 → 隊長組隊 → 全員投票（否決則換隊長，同輪 5 次否決邪惡勝）→ 隊員出任務牌 → 3 成功進入刺殺梅林、3 失敗邪惡勝；第 2、3、4 個任務後可使用湖中女神" width="720">
+</picture>
+<br><sub>圖表原始檔：<a href="docs/diagrams/game-flow.mmd">docs/diagrams/game-flow.mmd</a></sub>
+</p>
 
 ### 📋 每一輪怎麼進行
 
@@ -335,18 +314,13 @@ flowchart TD
 
 ## 🛠️ 技術架構
 
-```mermaid
-flowchart LR
-    GH["📦 GitHub Pages<br/>靜態網頁"] -->|載入網頁| UI
-    subgraph B["每位玩家的瀏覽器（手機／電腦）"]
-        UI["🖥️ 遊戲介面<br/>Preact + htm"]
-        HE["🎲 房主瀏覽器<br/>裁判：計票、判定、推進流程"]
-    end
-    UI <-->|即時同步| DB[("🔥 Firebase<br/>Realtime Database<br/>＋ 匿名登入")]
-    HE <-->|寫入遊戲狀態| DB
-    RULES["🛡️ 安全規則<br/>database.rules.json"] -.->|保護讀寫| DB
-    CI["⚙️ GitHub Actions<br/>測試全部通過"] -->|自動部署| GH
-```
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/diagram-architecture-dark.png">
+  <img src="docs/images/diagram-architecture-light.png" alt="技術架構圖：GitHub Pages 提供網頁，玩家與房主的瀏覽器透過 Firebase Realtime Database 即時同步，安全規則保護讀寫，GitHub Actions 測試通過後自動部署" width="860">
+</picture>
+<br><sub>圖表原始檔：<a href="docs/diagrams/architecture.mmd">docs/diagrams/architecture.mmd</a></sub>
+</p>
 
 | 項目 | 使用技術 |
 |---|---|
